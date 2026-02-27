@@ -2,6 +2,7 @@ import { create } from "zustand";
 import {
     getProducts,
     searchProducts as searchProductsApi,
+    getProductById,
     getCategories as getCategoriesApi,
     getProductsByCategory,
 } from "@/services/api";
@@ -9,9 +10,10 @@ import {
 const LIMIT = 10;
 
 const useProductStore = create((set, get) => ({
-    // State
+    // ── State ──────────────────────────────────────────────
     products: [],
     total: 0,
+    selectedProduct: null,
     categories: [],
     selectedCategory: "",
     searchQuery: "",
@@ -19,6 +21,8 @@ const useProductStore = create((set, get) => ({
     limit: LIMIT,
     loading: false,
     error: null,
+
+    // ── Async Actions ──────────────────────────────────────
 
     /**
      * Fetch products — respects current page, limit, and selected category.
@@ -47,13 +51,37 @@ const useProductStore = create((set, get) => ({
      * Search products by query string. Resets page and category.
      */
     searchProducts: async (query) => {
-        set({ loading: true, error: null, searchQuery: query, page: 1, selectedCategory: "" });
+        set({
+            loading: true,
+            error: null,
+            searchQuery: query,
+            page: 1,
+            selectedCategory: "",
+        });
         try {
             const data = await searchProductsApi(query);
             set({ products: data.products, total: data.total, loading: false });
         } catch (err) {
             set({
                 error: err?.response?.data?.message || "Search failed.",
+                loading: false,
+            });
+        }
+    },
+
+    /**
+     * Fetch a single product by ID and store as selectedProduct.
+     * @param {number|string} id
+     */
+    fetchProductById: async (id) => {
+        set({ loading: true, error: null, selectedProduct: null });
+        try {
+            const data = await getProductById(id);
+            set({ selectedProduct: data, loading: false });
+        } catch (err) {
+            set({
+                error:
+                    err?.response?.data?.message || "Failed to fetch product details.",
                 loading: false,
             });
         }
@@ -67,9 +95,35 @@ const useProductStore = create((set, get) => ({
             const data = await getCategoriesApi();
             set({ categories: data });
         } catch {
-            // silently fail — categories are non-critical
+            // silently fail — categories are non-critical UI
         }
     },
+
+    /**
+     * Fetch products filtered by a specific category slug.
+     * @param {string} category
+     */
+    fetchProductsByCategory: async (category) => {
+        const { limit } = get();
+        set({
+            loading: true,
+            error: null,
+            selectedCategory: category,
+            page: 1,
+            searchQuery: "",
+        });
+        try {
+            const data = await getProductsByCategory(category, limit, 0);
+            set({ products: data.products, total: data.total, loading: false });
+        } catch (err) {
+            set({
+                error: err?.response?.data?.message || "Failed to fetch category products.",
+                loading: false,
+            });
+        }
+    },
+
+    // ── Setters ────────────────────────────────────────────
 
     /** Set selected category and reset page. */
     setCategory: (category) => {
@@ -86,6 +140,12 @@ const useProductStore = create((set, get) => ({
     resetFilters: () => {
         set({ searchQuery: "", selectedCategory: "", page: 1 });
     },
+
+    /** Clear the selected product. */
+    clearSelectedProduct: () => set({ selectedProduct: null }),
+
+    /** Clear any error. */
+    clearError: () => set({ error: null }),
 }));
 
 export default useProductStore;

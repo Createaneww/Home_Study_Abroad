@@ -13,16 +13,13 @@ import {
 } from "@mui/material";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import useAuthStore from "@/store/authStore";
-import { loginUser } from "@/services/api";
 
 export default function LoginPage() {
     const router = useRouter();
-    const login = useAuthStore((state) => state.login);
+    const { loginUser, loading, error, clearError } = useAuthStore();
 
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
-    const [error, setError] = useState("");
-    const [loading, setLoading] = useState(false);
 
     // Basic field-level validation
     const [touched, setTouched] = useState({ username: false, password: false });
@@ -35,25 +32,19 @@ export default function LoginPage() {
         setTouched({ username: true, password: true });
 
         if (!username.trim() || !password.trim()) {
-            setError("Please fill in all fields.");
             return;
         }
 
-        setError("");
-        setLoading(true);
+        clearError();
 
         try {
-            const data = await loginUser(username.trim(), password.trim());
-            login(data);
+            await loginUser(username.trim(), password.trim());
             router.push("/dashboard");
-        } catch (err) {
-            const message =
-                err.response?.data?.message || "Login failed. Please try again.";
-            setError(message);
-        } finally {
-            setLoading(false);
+        } catch {
+            // error is already set in the store
         }
     };
+
 
     return (
         <Box

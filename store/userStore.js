@@ -1,20 +1,27 @@
 import { create } from "zustand";
-import { getUsers, searchUsers as searchUsersApi } from "@/services/api";
+import {
+    getUsers,
+    searchUsers as searchUsersApi,
+    getUserById,
+} from "@/services/api";
 
 const LIMIT = 10;
 
 const useUserStore = create((set, get) => ({
-    // State
+    // ── State ──────────────────────────────────────────────
     users: [],
     total: 0,
+    selectedUser: null,
     loading: false,
     error: null,
     page: 1,
     limit: LIMIT,
     searchQuery: "",
 
+    // ── Async Actions ──────────────────────────────────────
+
     /**
-     * Fetch users list (paginated).
+     * Fetch paginated users list.
      * Respects the current page & limit stored in state.
      */
     fetchUsers: async () => {
@@ -49,16 +56,39 @@ const useUserStore = create((set, get) => ({
         }
     },
 
+    /**
+     * Fetch a single user by ID and store as selectedUser.
+     * @param {number|string} id
+     */
+    fetchUserById: async (id) => {
+        set({ loading: true, error: null, selectedUser: null });
+        try {
+            const data = await getUserById(id);
+            set({ selectedUser: data, loading: false });
+        } catch (err) {
+            set({
+                error: err?.response?.data?.message || "Failed to fetch user details.",
+                loading: false,
+            });
+        }
+    },
+
+    // ── Setters ────────────────────────────────────────────
+
     /** Navigate to a specific page number. */
     setPage: (page) => set({ page }),
 
     /** Update the search query (used for controlled input). */
     setSearchQuery: (query) => set({ searchQuery: query }),
 
-    /** Clear the search and refetch the default users list. */
-    resetSearch: () => {
-        set({ searchQuery: "", page: 1 });
-    },
+    /** Clear search and reset to default list. */
+    resetSearch: () => set({ searchQuery: "", page: 1 }),
+
+    /** Clear the selected user. */
+    clearSelectedUser: () => set({ selectedUser: null }),
+
+    /** Clear any error. */
+    clearError: () => set({ error: null }),
 }));
 
 export default useUserStore;
